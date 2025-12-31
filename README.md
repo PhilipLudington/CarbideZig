@@ -4,19 +4,60 @@
 
 CarbideZig is a comprehensive coding standards framework designed for Claude Code, enabling developers to write safe, maintainable, and trustworthy Zig code with AI assistance.
 
-## Quick Start
+## Installation
 
-### 1. Create a New Project
+### Option A: Add CarbideZig to an Existing Project
+
+This is the most common use case. Copy the CarbideZig configuration files into your existing Zig project:
 
 ```bash
-# Using the slash command (in Claude Code)
-/carbide-init my-project
+# Clone CarbideZig somewhere on your system
+git clone https://github.com/yourusername/CarbideZig.git ~/CarbideZig
 
-# Or manually copy the template
-cp -r templates/project my-project
+# Navigate to your existing Zig project
+cd /path/to/your/zig-project
+
+# Copy the Claude Code rules (required for AI assistance)
+cp -r ~/CarbideZig/.claude .
+
+# Copy the standards documentation (optional but recommended)
+cp ~/CarbideZig/STANDARDS.md .
+cp ~/CarbideZig/CARBIDE.md .
 ```
 
-### 2. Build and Run
+**What you get:**
+- `.claude/rules/` — 10 rule files automatically loaded by Claude Code for context-aware assistance
+- `.claude/commands/` — Slash commands for code review, validation, and project creation
+- `STANDARDS.md` — Complete coding standards reference
+- `CARBIDE.md` — Quick reference card
+
+### Option B: Create a New Project from Scratch
+
+Once CarbideZig is installed in a directory, you can use the `/carbide-init` command:
+
+```bash
+# First, set up a temporary directory with CarbideZig rules
+mkdir my-workspace && cd my-workspace
+cp -r ~/CarbideZig/.claude .
+
+# Now start Claude Code and use the init command
+claude
+# Inside Claude Code:
+/carbide-init my-project
+```
+
+This creates a complete project structure with `build.zig`, `src/main.zig`, and all standard files.
+
+### Option C: Use the Template Directly
+
+```bash
+cp -r ~/CarbideZig/templates/project my-project
+cd my-project
+```
+
+## Quick Start
+
+After installation, build and run your project:
 
 ```bash
 cd my-project
@@ -26,9 +67,13 @@ zig build test     # Test
 zig fmt src/       # Format
 ```
 
-### 3. Use AI-Assisted Development
+## Using AI-Assisted Development
 
-With Claude Code, the `.claude/rules/` are automatically loaded, providing context-aware assistance that follows CarbideZig standards.
+Once `.claude/rules/` is in your project, Claude Code automatically loads the CarbideZig standards. You'll get:
+
+- **Automatic rule enforcement** — Claude follows Zig best practices for memory, errors, naming, etc.
+- **Slash commands** — Use `/carbide-review`, `/carbide-check`, and `/carbide-safety`
+- **Context-aware suggestions** — Claude understands your project follows CarbideZig patterns
 
 ## Features
 
@@ -148,11 +193,14 @@ pub const Client = struct {
 | Constants | snake_case | `max_size` |
 | Files | snake_case | `http_client.zig` |
 
-## Integrating with Existing Projects
+## Verifying Installation
 
-1. Copy `STANDARDS.md` and `CARBIDE.md` to your project root
-2. Copy `.claude/` directory for AI assistance
-3. Review code against standards using `/carbide-review`
+After adding CarbideZig to your project, verify it's working:
+
+1. Start Claude Code in your project directory: `claude`
+2. Ask Claude about Zig memory management — it should reference CarbideZig rules
+3. Run `/carbide-check` to validate your build configuration
+4. Run `/carbide-review` to review existing code against standards
 
 ## Requirements
 
