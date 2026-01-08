@@ -61,6 +61,29 @@ pub fn divide(a: i32, b: i32) Result
 - Use for complex object construction
 - Return `*Self` from setters for chaining
 
-## A7: Writer/Reader Pattern
-- Accept `anytype` writer/reader for I/O flexibility
-- Works with files, buffers, network streams
+## A7: Writer/Reader Pattern (Zig 0.15+)
+- Use new `std.Io.Reader` and `std.Io.Writer` concrete types
+- Old generic `anytype` pattern is deprecated
+- Always use explicit buffering and flush
+
+```zig
+// GOOD (Zig 0.15+): Concrete types with explicit buffering
+pub fn writeData(writer: std.Io.Writer, data: []const u8) !void {
+    try writer.writeAll(data);
+    // Don't forget to flush when needed!
+}
+
+// For stdout with buffering
+var buffer: [4096]u8 = undefined;
+const stdout = std.io.getStdOut();
+var writer = stdout.writer(&buffer);
+try writer.print("Hello {s}\n", .{name});
+try writer.flush();
+
+// Legacy compatibility: use adaptToNewApi() for old streams
+```
+
+## A8: Removed Features (Zig 0.15+)
+- `usingnamespace` keyword removed - use explicit imports
+- `async`/`await` keywords removed
+- `BoundedArray` removed - accept slices or use dynamic allocation

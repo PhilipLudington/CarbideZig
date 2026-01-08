@@ -50,3 +50,34 @@ errdefer file.close();  // Only on error
 ## M6: Testing Allocator
 - Use `std.testing.allocator` in tests (checks leaks)
 - Use `std.heap.GeneralPurposeAllocator` for debug builds
+
+## M7: ArrayList Patterns (Zig 0.15+)
+- `std.ArrayListUnmanaged` is now the default/simpler pattern
+- `std.ArrayList` (managed) requires allocator per method call
+- Prefer unmanaged when allocator is stored in parent struct
+
+```zig
+// Unmanaged (preferred in 0.15+): simpler, allocator passed to methods
+var list = std.ArrayListUnmanaged(u8){};
+defer list.deinit(allocator);
+try list.append(allocator, value);
+
+// Managed: allocator stored in list, passed per method
+var list = std.ArrayList(u8).init(allocator);
+defer list.deinit();
+try list.append(allocator, value);  // Still needs allocator in 0.15!
+```
+
+## M8: Avoid undefined in Arithmetic
+- Zig 0.15 disallows `undefined` in arithmetic operations
+- Initialize variables explicitly before use
+
+```zig
+// BAD (Zig 0.15 compile error)
+var x: u32 = undefined;
+x += 1;
+
+// GOOD
+var x: u32 = 0;
+x += 1;
+```

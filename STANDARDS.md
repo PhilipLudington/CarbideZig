@@ -2,7 +2,7 @@
 
 > **Hardened Zig Development Standards for AI-Assisted Programming**
 >
-> Version 1.0 | Zig 0.13+
+> Version 2.0 | Zig 0.15+
 
 ## Philosophy
 
@@ -36,6 +36,7 @@ CarbideZig enables developers to write safe, maintainable, and trustworthy Zig c
 12. [Logging](#12-logging)
 13. [Performance](#13-performance)
 14. [Quick Reference](#14-quick-reference)
+15. [Zig 0.15 Migration Guide](#15-zig-015-migration-guide)
 
 ---
 
@@ -477,18 +478,23 @@ pub fn ArrayList(comptime T: type) type {
 }
 ```
 
-**Pattern: Writer/Reader interfaces**
+**Pattern: Writer/Reader interfaces (Zig 0.15+)**
 
 ```zig
-pub fn writeJson(value: anytype, writer: anytype) !void {
-    // Works with any type that has write() method
+// Zig 0.15+: Use concrete std.Io.Writer instead of anytype
+pub fn writeJson(value: anytype, writer: std.Io.Writer) !void {
     try writer.writeAll("{");
     // ...
+    // Don't forget to flush when needed!
 }
 
-// Usage
-var list = std.ArrayList(u8).init(allocator);
-try writeJson(data, list.writer());
+// Usage with explicit buffering
+var buffer: [4096]u8 = undefined;
+const file = try std.fs.cwd().createFile("output.json", .{});
+defer file.close();
+var writer = file.writer(&buffer);
+try writeJson(data, writer);
+try writer.flush();
 ```
 
 ### 4.4 Builder Pattern
@@ -706,10 +712,11 @@ test "Buffer grows when capacity exceeded" { }
 ```zig
 test "no memory leaks" {
     // std.testing.allocator checks for leaks
-    var list = std.ArrayList(u8).init(std.testing.allocator);
-    defer list.deinit();
+    // Zig 0.15+: Prefer ArrayListUnmanaged
+    var list = std.ArrayListUnmanaged(u8){};
+    defer list.deinit(std.testing.allocator);
 
-    try list.appendSlice("hello");
+    try list.appendSlice(std.testing.allocator, "hello");
     try std.testing.expectEqualStrings("hello", list.items);
 }
 ```
@@ -904,7 +911,7 @@ pub fn RingBuffer(comptime T: type, comptime capacity: usize) type {
 
 ## 10. Build System
 
-### 10.1 Standard build.zig
+### 10.1 Standard build.zig (Zig 0.15+)
 
 ```zig
 const std = @import("std");
@@ -913,21 +920,24 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    // Library
-    const lib = b.addStaticLibrary(.{
-        .name = "mylib",
+    // Zig 0.15+: Use modules with root_module pattern
+    const lib_mod = b.addModule("mylib", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
     });
-    b.installArtifact(lib);
 
-    // Executable
+    // Executable using root_module
     const exe = b.addExecutable(.{
         .name = "myapp",
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "mylib", .module = lib_mod },
+            },
+        }),
     });
     b.installArtifact(exe);
 
@@ -937,11 +947,9 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the application");
     run_step.dependOn(&run_cmd.step);
 
-    // Tests
+    // Tests using root_module
     const lib_tests = b.addTest(.{
-        .root_source_file = b.path("src/root.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = lib_mod,
     });
     const run_lib_tests = b.addRunArtifact(lib_tests);
     const test_step = b.step("test", "Run unit tests");
@@ -1244,6 +1252,69 @@ zig fmt --check src/   # Check formatting
 
 ---
 
+## 15. Zig 0.15 Migration Guide
+
+### 15.1 Breaking Changes
+
+**Reader/Writer Overhaul**
+- Old `std.io` readers/writers are deprecated
+- New `std.Io.Reader` and `std.Io.Writer` are concrete (non-generic)
+- Must use explicit buffering and flush output
+
+```zig
+// Old (deprecated)
+const writer = file.writer();
+try writer.print("hello", .{});
+
+// New (Zig 0.15+)
+var buffer: [4096]u8 = undefined;
+var writer = file.writer(&buffer);
+try writer.print("hello", .{});
+try writer.flush();
+```
+
+**ArrayList Changes**
+- `std.ArrayList` now requires allocator per method call
+- `std.ArrayListUnmanaged` is the simpler default pattern
+
+```zig
+// Prefer unmanaged in 0.15+
+var list = std.ArrayListUnmanaged(u8){};
+defer list.deinit(allocator);
+try list.append(allocator, value);
+```
+
+**Build System**
+- `root_source_file` deprecated; use `root_module` pattern
+- Use `b.addModule()` and `b.createModule()` for modules
+
+### 15.2 Removed Features
+
+| Feature | Alternative |
+|---------|-------------|
+| `usingnamespace` | Explicit imports |
+| `async`/`await` | Use threads or callbacks |
+| `@frameSize` | Removed |
+| `BoundedArray` | Accept slices or use dynamic allocation |
+| `std.fifo.LinearFifo` | Use `std.RingBuffer` alternatives |
+| `std.RingBuffer` | Removed from stdlib |
+
+### 15.3 New Restrictions
+
+- **Arithmetic on undefined**: Using `undefined` in arithmetic operations now causes compile errors
+- **Lossy int-to-float**: Compile error when integer literals lose precision converting to floats
+- **Packed unions**: Cannot specify align attribute on packed union fields
+
+### 15.4 New Features
+
+- Debug compilation 5x faster with x86 backend
+- `zig init --minimal` for stub templates
+- `zig test-obj` compiles tests to object files
+- `--watch` file system watching (macOS)
+- `--webui` build interface with timing reports
+
+---
+
 ## Appendix: Tool Integration
 
 ### Editor Setup
@@ -1263,4 +1334,4 @@ zig fmt --check src/   # Check formatting
 
 ---
 
-*CarbideZig Standards v1.0 — Hardened Zig for AI-Assisted Development*
+*CarbideZig Standards v2.0 — Hardened Zig 0.15+ for AI-Assisted Development*

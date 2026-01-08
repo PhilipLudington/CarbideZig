@@ -218,7 +218,7 @@ After adding CarbideZig to your project, verify it's working:
 
 ## Requirements
 
-- Zig 0.13.0 or later
+- Zig 0.15.0 or later
 - Claude Code (for AI-assisted features)
 
 ## License
