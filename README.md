@@ -4,56 +4,63 @@
 
 CarbideZig is a comprehensive coding standards framework designed for Claude Code, enabling developers to write safe, maintainable, and trustworthy Zig code with AI assistance.
 
-## Installation
+## Quick Commands (No Setup)
 
-### Option A: Add CarbideZig to an Existing Project
+For immediate use on any Zig codebase with Claude Code:
 
-This is the most common use case. Copy the CarbideZig configuration files into your existing Zig project:
-
-```bash
-# Clone CarbideZig somewhere on your system
-git clone https://github.com/yourusername/CarbideZig.git ~/CarbideZig
-
-# Navigate to your existing Zig project
-cd /path/to/your/zig-project
-
-# Copy the Claude Code rules (required for AI assistance)
-cp -r ~/CarbideZig/.claude .
-
-# Copy the standards documentation (optional but recommended)
-cp ~/CarbideZig/STANDARDS.md .
-cp ~/CarbideZig/CARBIDE.md .
+```
+/carbide-review src/main.zig    # Review code against CarbideZig standards
+/carbide-safety src/            # Security-focused review
 ```
 
-**What you get:**
-- `.claude/rules/` — 10 rule files automatically loaded by Claude Code for context-aware assistance
-- `.claude/commands/` — Slash commands for code review, validation, and project creation
-- `STANDARDS.md` — Complete coding standards reference
-- `CARBIDE.md` — Quick reference card
+## Creating a New Project
 
-### Option B: Create a New Project from Scratch
-
-Once CarbideZig is installed in a directory, you can use the `/carbide-init` command:
-
-```bash
-# First, set up a temporary directory with CarbideZig rules
-mkdir my-workspace && cd my-workspace
-cp -r ~/CarbideZig/.claude .
-
-# Now start Claude Code and use the init command
-claude
-# Inside Claude Code:
+```
 /carbide-init my-project
+cd my-project
+zig build          # Build
+zig build test     # Run tests
+zig build run      # Run executable
 ```
 
-This creates a complete project structure with `build.zig`, `src/main.zig`, and all standard files.
+## Integrating Into Existing Projects
 
-### Option C: Use the Template Directly
+### Step 1: Download the installer
 
 ```bash
-cp -r ~/CarbideZig/templates/project my-project
-cd my-project
+mkdir -p .claude/commands
+curl -o .claude/commands/carbide-install.md \
+  https://raw.githubusercontent.com/PhilipLudington/CarbideZig/main/commands/carbide-install.md
 ```
+
+### Step 2: Run the installation
+
+In Claude Code:
+
+```
+/carbide-install
+```
+
+### Step 3: Use CarbideZig commands
+
+```
+/carbide-review src/main.zig
+/carbide-check
+/carbide-update
+```
+
+## What Gets Installed
+
+When you run `/carbide-install`, CarbideZig is cloned into a `carbide/` directory in your project:
+
+- `carbide/` — CarbideZig framework (cloned from GitHub)
+  - `STANDARDS.md` — Complete coding standards reference
+  - `CARBIDE.md` — Quick reference card
+  - `commands/` — Slash command source files
+  - `rules/` — Rule source files
+  - `templates/` — Build configuration templates
+- `.claude/commands/` — 6 slash commands (copied from carbide/)
+- `.claude/rules/` — 10 auto-loaded rules (copied from carbide/)
 
 ## Quick Start
 
@@ -102,6 +109,8 @@ Once `.claude/rules/` is in your project, Claude Code automatically loads the Ca
 
 | Command | Description |
 |---------|-------------|
+| `/carbide-install` | Install CarbideZig into existing project |
+| `/carbide-update` | Update to latest CarbideZig version |
 | `/carbide-init` | Create new CarbideZig project |
 | `/carbide-review` | Code review against standards |
 | `/carbide-check` | Run build, test, format checks |
@@ -128,19 +137,24 @@ Security-focused guides in `docs/security/`:
 
 ```
 CarbideZig/
-├── STANDARDS.md           # Comprehensive coding standards
-├── CARBIDE.md             # Quick reference card
-├── .claude/
-│   ├── commands/          # Slash commands
-│   └── rules/             # AI rules (auto-loaded)
+├── STANDARDS.md               # Comprehensive coding standards
+├── CARBIDE.md                 # Quick reference card
+├── commands/                  # Slash command sources
+│   ├── carbide-install.md
+│   ├── carbide-update.md
+│   ├── carbide-init.md
+│   ├── carbide-review.md
+│   ├── carbide-check.md
+│   └── carbide-safety.md
+├── rules/                     # Rule file sources
 ├── docs/
-│   ├── patterns/          # Implementation patterns
-│   └── security/          # Security guides
+│   ├── patterns/              # Implementation patterns
+│   └── security/              # Security guides
 ├── templates/
-│   ├── build.zig          # Build template
-│   └── project/           # Project scaffold
+│   ├── build.zig              # Build template
+│   └── project/               # Project scaffold
 └── examples/
-    └── hello/             # Example project
+    └── hello/                 # Example project
 ```
 
 ## Core Principles
