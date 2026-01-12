@@ -273,3 +273,115 @@ pub fn init(allocator: Allocator) !Self {
     return Self{ .a = a, .b = b };
 }
 ```
+
+---
+
+## Allocator Selection Guide
+
+Use this decision tree to choose the right allocator for your use case.
+
+### Decision Tree
+
+```
+Is this for testing?
+├── Yes → std.testing.allocator (leak detection)
+└── No
+    ├── Is this a one-time allocation at startup?
+    │   └── Yes → std.heap.page_allocator (direct OS)
+    └── No
+        ├── Do all allocations share a lifetime?
+        │   └── Yes → ArenaAllocator (batch free)
+        └── No
+            ├── Is max size known at compile time?
+            │   └── Yes → FixedBufferAllocator (stack/no heap)
+            └── No
+                ├── Is this development/debugging?
+                │   └── Yes → GeneralPurposeAllocator (leak reports)
+                └── No (production)
+                    └── Consider c_allocator or custom
+```
+
+### Allocator Comparison
+
+| Allocator | Use Case | Pros | Cons |
+|-----------|----------|------|------|
+| `GeneralPurposeAllocator` | Development, debugging | Leak detection, safety checks | Overhead |
+| `ArenaAllocator` | Request handling, batch ops | Fast alloc, single free | Can't free individual items |
+| `FixedBufferAllocator` | Known max size, embedded | No heap, predictable | Fixed capacity |
+| `page_allocator` | Large allocations, one-time | Direct OS, simple | Page-granular |
+| `c_allocator` | C interop, production | Fast, standard | No safety checks |
+| `std.testing.allocator` | Unit tests | Leak detection | Test only |
+
+### Pattern: Layered Allocators
+
+Combine allocators for different lifetime scopes:
+
+```zig
+pub fn main() !void {
+    // Outer: GPA for leak detection
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    try runServer(allocator);
+}
+
+fn runServer(allocator: Allocator) !void {
+    while (true) {
+        // Per-request: Arena for fast cleanup
+        var arena = std.heap.ArenaAllocator.init(allocator);
+        defer arena.deinit();
+
+        try handleRequest(arena.allocator());
+    }
+}
+
+fn handleRequest(allocator: Allocator) !void {
+    // All allocations freed when arena.deinit() called
+    const headers = try parseHeaders(allocator);
+    const body = try parseBody(allocator);
+    try processRequest(allocator, headers, body);
+}
+```
+
+### Pattern: Testing Allocator for Failure Paths
+
+```zig
+test "handles allocation failure" {
+    // Configure to fail on 3rd allocation
+    var failing = std.testing.FailingAllocator.init(std.testing.allocator, .{
+        .fail_index = 2,
+    });
+
+    const result = MyStruct.init(failing.allocator());
+    try std.testing.expectError(error.OutOfMemory, result);
+}
+```
+
+### Pattern: Memory-Limited Allocator
+
+```zig
+var gpa = std.heap.GeneralPurposeAllocator(.{
+    .enable_memory_limit = true,
+}){};
+gpa.setRequestedMemoryLimit(50 * 1024 * 1024);  // 50MB limit
+
+const allocator = gpa.allocator();
+// Allocations beyond limit return error.OutOfMemory
+```
+
+### Pattern: Scratch Buffer for Temporary Work
+
+```zig
+fn processData(allocator: Allocator, input: []const u8) ![]u8 {
+    // Stack buffer for small temporary allocations
+    var scratch: [4096]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&scratch);
+
+    // Use scratch for intermediate work
+    const temp = try parse(fba.allocator(), input);
+
+    // Final result uses passed-in allocator (survives function)
+    return try transform(allocator, temp);
+}
+```
